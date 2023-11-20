@@ -18,7 +18,7 @@ let snakes = {};
 
 wss.on('connection', (ws) => {
   // Generate a unique ID for the connected client
-  const clientId = ws._socket.remoteAddress;
+  const clientId = generateUniqueId();
   console.log(clientId)
 
   // Initialize the snake for the connected client
@@ -37,6 +37,7 @@ wss.on('connection', (ws) => {
     if (type === 'keydown') {
       // Process the key code and update the snake position
       handleKeyDown(clientId, data.keyCode);
+      console.log(clientId)
     }
   });
 
@@ -45,6 +46,10 @@ wss.on('connection', (ws) => {
     delete snakes[clientId];
   });
 });
+
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
 
 function handleKeyDown(clientId, keyCode) {
   // Update the snake position based on the key code
@@ -120,11 +125,11 @@ function moveSnakes() {
     // Broadcast the updated snake positions to all clients
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        const clientId = getClientIdByWebSocket(client);
+        //const clientId = getClientIdByWebSocket(client);
         // console.log(snakes)
-        if (clientId) {
-          client.send(JSON.stringify({ type: 'snake', data: snakes[clientId] }));
-        }
+        //if (clientId) {
+          client.send(JSON.stringify({ type: 'snake', data: snakes }));
+        //}
       }
     });
   }
