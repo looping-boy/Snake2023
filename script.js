@@ -5,10 +5,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const boxSize = 10;
 
-    //const socket = new WebSocket('ws://52.47.142.196:3000');
+    // const socket = new WebSocket('ws://52.47.142.196:3000');
     const socket = new WebSocket('ws://localhost:3000');
-    socket.onmessage = function(e){ console.log(e.data); };
-    socket.onopen = () => conn.send('hello');
+    //socket.onmessage = function(e){ console.log(e.data); };
+    //socket.onopen = () => conn.send('hello');
 
     socket.addEventListener('open', (event) => {
         console.log('WebSocket connection opened');
@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
     socket.addEventListener('message', (event) => {
         const { type, data } = JSON.parse(event.data);
         console.log("message", event.data)
+        //console.log(JSON.stringify(event.data.lp7eu63))
         if (type === 'snake') {
             drawSnake(data);
         }

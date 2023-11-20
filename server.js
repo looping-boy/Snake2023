@@ -14,7 +14,7 @@ const wss = new WebSocket.Server({ server });
 const boxSize = 10;
 const gridSize = 20
 
-let snakes = {};
+let snakes = [];
 
 wss.on('connection', (ws) => {
   // Generate a unique ID for the connected client
