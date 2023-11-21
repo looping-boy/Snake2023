@@ -11,147 +11,173 @@ app.use(bodyParser.json());
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+const port = 3000;
+const gameClock = 50;
 const boxSize = 10;
-const gridSize = 20
+const gridSize = 20;
+const xMax = gridSize * boxSize * 2;
+const xMin = 0;
+const yMax = gridSize * boxSize * 2;
+const yMin = 0;
 
-let snakes = {};
+const clients = new Set();
+
+let snakes = [];
+
+function getRandomCoordinate(min, max, boxSize) {
+  return Math.floor(Math.random() * ((max - boxSize) - min + 1) / boxSize) * boxSize;
+}
+
+function createNewApple() {
+  const apple_x = getRandomCoordinate(xMin, xMax, boxSize);
+  const apple_y = getRandomCoordinate(yMin, yMax, boxSize);
+  return { x: apple_x, y: apple_y };
+}
+
+let apple = createNewApple();
 
 wss.on('connection', (ws) => {
+  // ADD CLIENT 
+  clients.add(ws);
+
   // Generate a unique ID for the connected client
-  const clientId = generateUniqueId();
-  console.log(clientId)
+  const iD = generateUniqueId();
 
   // Initialize the snake for the connected client
-  snakes[clientId] = [{
-    x: gridSize * boxSize,
-    y: gridSize * boxSize,
-    direction: 'right'
-  }];
+  snakes.push({
+    id: iD,
+    snake: [{
+      x: gridSize * boxSize,
+      y: gridSize * boxSize,
+      direction: 'right'
+    }]
+  });
 
   // Send the initial snake data to the client
-  ws.send(JSON.stringify({ type: 'snake', data: snakes[clientId] }));
+  ws.send(JSON.stringify({ type: 'snake', data: snakes }));
+
+  ws.send(JSON.stringify({ type: 'apple', data: apple }));
 
   ws.on('message', (message) => {
     const { type, data } = JSON.parse(message);
-
+    //console.log(type, data)
+    // OPTIMIZE CODE HERE:
     if (type === 'keydown') {
-      // Process the key code and update the snake position
-      handleKeyDown(clientId, data.keyCode);
-      console.log(clientId)
+      handleKeyDown(iD, data.keyCode);
     }
   });
 
   ws.on('close', () => {
-    // Remove the disconnected client's snake
-    delete snakes[clientId];
+    clients.delete(ws);
+    const index = snakes.findIndex(snake => snake.id === iD);
+    if (index !== -1) {
+      snakes.splice(index, 1);
+    }
   });
 });
 
 function generateUniqueId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  return Date.now().toString(36).slice(5, 7) + Math.random().toString(36).slice(3, 5);
 }
 
 function handleKeyDown(clientId, keyCode) {
-  // Update the snake position based on the key code
-  const head = Object.assign({}, snakes[clientId][0]);
-  let directionChoose;
-  switch (keyCode) {
-    case 37:
-      head.x -= boxSize;
-      directionChoose = 'left'
-      break;
-    case 38:
-      head.y -= boxSize;
-      directionChoose = 'down'
-      break;
-    case 39:
-      head.x += boxSize;
-      directionChoose = 'right'
-      break;
-    case 40:
-      head.y += boxSize;
-      directionChoose = 'up'
-      break;
-  }
+  const snakeObj = snakes.find(snake => snake.id === clientId);
+  if (snakeObj) {
+    const head = Object.assign({}, snakeObj.snake[0]);
+    let directionChoose;
+    switch (keyCode) {
+      case 37:
+        //head.x -= boxSize;
+        directionChoose = 'left'
+        break;
+      case 38:
+        //head.y -= boxSize;
+        directionChoose = 'down'
+        break;
+      case 39:
+        //head.x += boxSize;
+        directionChoose = 'right'
+        break;
+      case 40:
+        //head.y += boxSize;
+        directionChoose = 'up'
+        break;
+    }
 
-  snakes[clientId].direction = directionChoose; 
+    snakeObj.snake[0].direction = directionChoose;
+  }
 }
 
 function moveSnakes() {
-    for (const clientId in snakes) {
-      const head = Object.assign({}, snakes[clientId][0]);
-      switch (snakes[clientId].direction) {
-        case 'left':
-          head.x -= boxSize;
-          if (head.x < 0) {
-            // Wrap to the right side of the grid
-            head.x = gridSize * boxSize * 2 - boxSize;
-          }
-          break;
-        case 'down':
-          head.y -= boxSize;
-          if (head.y < 0) {
-            // Wrap to the bottom side of the grid
-            head.y = gridSize * boxSize * 2 - boxSize;
-          }
-          break;
-        case 'right':
-          head.x += boxSize;
-          if (head.x >= gridSize * boxSize * 2) {
-            // Wrap to the left side of the grid
-            head.x = 0;
-          }
-          break;
-        case 'up':
-          head.y += boxSize;
-          if (head.y >= gridSize * boxSize * 2) {
-            // Wrap to the top side of the grid
-            head.y = 0;
-          }
-          break;
-      }
-  
-      snakes[clientId].unshift(head);
-      snakes[clientId].pop();
+  for (const snakeObj of snakes) {
+    const head = Object.assign({}, snakeObj.snake[0]);
+    switch (head.direction) {
+      case 'left':
+        head.x -= boxSize;
+        if (head.x < 0) {
+          head.x = gridSize * boxSize * 2 - boxSize;
+        }
+        break;
+      case 'down':
+        head.y -= boxSize;
+        if (head.y < 0) {
+          head.y = gridSize * boxSize * 2 - boxSize;
+        }
+        break;
+      case 'right':
+        head.x += boxSize;
+        if (head.x >= gridSize * boxSize * 2) {
+          head.x = 0;
+        }
+        break;
+      case 'up':
+        head.y += boxSize;
+        if (head.y >= gridSize * boxSize * 2) {
+          head.y = 0;
+        }
+        break;
     }
-  }
-  
-  function checkCollisions() {
-    // Implement collision detection logic here
-    // Example: Check if a snake collides with itself or with the boundaries of the canvas
-  }
-  
-  function broadcastSnakePositions() {
-    // Broadcast the updated snake positions to all clients
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        //const clientId = getClientIdByWebSocket(client);
-        // console.log(snakes)
-        //if (clientId) {
-          client.send(JSON.stringify({ type: 'snake', data: snakes }));
-        //}
-      }
-    });
-  }
-  
-  function getClientIdByWebSocket(ws) {
-    // Helper function to get the client ID based on the WebSocket instance
-    for (const client of wss.clients) {
-      if (client._socket === ws._socket) {
-        return client._socket.remoteAddress; // Use a property that uniquely identifies the client
-      }
-    }
-    return null;
-  }
 
-// Set up the game loop
+    snakeObj.snake.unshift(head);
+
+    let { direction, ...headWithoutDir } = head;
+    if (headWithoutDir.x === apple.x && headWithoutDir.y === apple.y) {
+      apple = createNewApple();
+      broadcastApplePosition();
+    } else {
+      snakeObj.snake.pop();
+    }
+    
+  }
+}
+
+function broadcastSnakePositions() {
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ 
+        type: 'snake', 
+        data: snakes 
+      }));
+    }
+  });
+}
+
+function broadcastApplePosition() {
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ 
+        type: 'apple', 
+        data: apple 
+      }));
+    }
+  });
+}
+
 setInterval(() => {
   moveSnakes();
-//   checkCollisions();
   broadcastSnakePositions();
-}, 50);
+}, gameClock);
 
-const port = 3000;
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });

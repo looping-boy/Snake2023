@@ -1,14 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
     
+    let apple = null;
+
     const canvas = document.getElementById("snakeCanvas");
     const ctx = canvas.getContext("2d");
 
     const boxSize = 10;
 
-    const socket = new WebSocket('ws://52.47.142.196:3000');
-    // const socket = new WebSocket('ws://localhost:3000');
+    // const socket = new WebSocket('wss://52.47.142.196:3000');
+    const socket = new WebSocket('ws://localhost:3000');
     socket.onmessage = function(e){ };
-    socket.onopen = () => conn.send('hello');
+    //socket.onopen = () => socket.send({});
 
     socket.addEventListener('open', (event) => {
         console.log('WebSocket connection opened');
@@ -20,14 +22,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     socket.addEventListener('message', (event) => {
         const { type, data } = JSON.parse(event.data);
-        //console.log("message", event.data[0])
-        //console.log(JSON.stringify(event.data.lp7eu63))
-        if (type === 'snake') {
-            // Iterate over the keys of the data object
-            
-
-            drawSnake(data);
+        if (type === 'apple') {
+            apple = data;
         }
+        if (type === 'snake') {
+            drawSnake(data, apple);
+        }
+        
     });
 
     document.addEventListener("keydown", function (event) {
@@ -37,30 +38,33 @@ document.addEventListener("DOMContentLoaded", function () {
         socket.send(JSON.stringify({ type: 'keydown', data: { keyCode } }));
     });
 
-    function drawSnake(data) {
+    function drawSnake(data, apple) {
         // Clear the canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        data.forEach((snakeObj, player) => {
+             // Get the x and y values for each clientId
+             const xValue = snakeObj.snake[0].x;
+             const yValue = snakeObj.snake[0].y;
 
-        for (const clientId in data) {
-            //console.log(clientId)
-            if (data.hasOwnProperty(clientId)) {
-                // Get the x and y values for each clientId
-                const xValue = data[clientId][0].x;
-                const yValue = data[clientId][0].y;
-
-                // Log or use the x and y values
-                console.log(`ClientId: ${clientId}, X: ${xValue}, Y: ${yValue}`);
-                // Draw the snake
-                for (let i = 0; i < data[clientId].length; i++) {
-                    ctx.fillStyle = i === 0 ? "#4CAF50" : "#45a049";
-                    ctx.fillRect(data[clientId][i].x, data[clientId][i].y, boxSize, boxSize);
-                    ctx.strokeStyle = "#fff";
-                    ctx.strokeRect(data[clientId][i].x, data[clientId][i].y, boxSize, boxSize);
-                }
-                //drawSnake(data[clientId]);
-            }
+             // Log or use the x and y values
+             //console.log(`iD: ${clientId}, X: ${xValue}, Y: ${yValue}`);
+             // Draw the snake
+             for (let i = 0; i < snakeObj.snake.length; i++) {
+                 ctx.fillStyle = player === 0 ? "#00FF00" : "#0000FF";
+                 ctx.fillRect(snakeObj.snake[i].x, snakeObj.snake[i].y, boxSize, boxSize);
+                 ctx.strokeStyle = "#fff";
+                 ctx.strokeRect(snakeObj.snake[i].x, snakeObj.snake[i].y, boxSize, boxSize);
+             }
+        });
+        if (apple != null) {
+            drawApple(apple);
         }
+    }
 
-        
+    function drawApple(apple) {
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(apple.x, apple.y, boxSize, boxSize);
+        ctx.strokeStyle = "#fff";
+        ctx.strokeRect(apple.x, apple.y, boxSize, boxSize);
     }
 });
