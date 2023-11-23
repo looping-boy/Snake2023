@@ -41,11 +41,11 @@ wss.on('connection', (ws) => {
   clients.add(ws);
 
   // Generate a unique ID for the connected client
-  const iD = generateUniqueId();
+  const id = generateUniqueId();
 
   // Initialize the snake for the connected client
   snakes.push({
-    id: iD,
+    id: id,
     snake: [{
       x: gridSize * boxSize,
       y: gridSize * boxSize,
@@ -63,13 +63,13 @@ wss.on('connection', (ws) => {
     //console.log(type, data)
     // OPTIMIZE CODE HERE:
     if (type === 'keydown') {
-      handleKeyDown(iD, data.keyCode);
+      handleKeyDown(id, data.keyCode);
     }
   });
 
   ws.on('close', () => {
     clients.delete(ws);
-    const index = snakes.findIndex(snake => snake.id === iD);
+    const index = snakes.findIndex(snake => snake.id === id);
     if (index !== -1) {
       snakes.splice(index, 1);
     }
@@ -87,59 +87,79 @@ function handleKeyDown(clientId, keyCode) {
     let directionChoose;
     switch (keyCode) {
       case 37:
-        //head.x -= boxSize;
         directionChoose = 'left'
+        if (snakeObj.snake[0].direction == 'right') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
+        else {snakeObj.snake[0].direction = directionChoose;}
         break;
       case 38:
-        //head.y -= boxSize;
         directionChoose = 'down'
+        if (snakeObj.snake[0].direction == 'up') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
+        else {snakeObj.snake[0].direction = directionChoose;}
         break;
       case 39:
-        //head.x += boxSize;
         directionChoose = 'right'
+        if (snakeObj.snake[0].direction == 'left') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
+        else {snakeObj.snake[0].direction = directionChoose;}
         break;
       case 40:
-        //head.y += boxSize;
         directionChoose = 'up'
+        if (snakeObj.snake[0].direction == 'down') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
+        else {snakeObj.snake[0].direction = directionChoose;}
         break;
     }
-
-    snakeObj.snake[0].direction = directionChoose;
   }
 }
 
+function snakeReverse(snake) {
+  const length = snake.length;
+  if (length >= 2) {
+    const [head, neck] = [snake[0], snake[1]];
+    if (head.x === neck.x) {
+      return head.y > neck.y ? 'up' : 'down';
+    } else if (head.y === neck.y) {
+      return head.x > neck.x ? 'right' : 'left';
+    } 
+  } 
+}
+
 function moveSnakes() {
+  
   for (const snakeObj of snakes) {
+
+    // MOVING/REAPEARING:
     const head = Object.assign({}, snakeObj.snake[0]);
     switch (head.direction) {
       case 'left':
         head.x -= boxSize;
-        if (head.x < 0) {
-          head.x = gridSize * boxSize * 2 - boxSize;
-        }
+        if (head.x < 0) { head.x = gridSize * boxSize * 2 - boxSize; }
         break;
       case 'down':
         head.y -= boxSize;
-        if (head.y < 0) {
-          head.y = gridSize * boxSize * 2 - boxSize;
-        }
+        if (head.y < 0) { head.y = gridSize * boxSize * 2 - boxSize; }
         break;
       case 'right':
         head.x += boxSize;
-        if (head.x >= gridSize * boxSize * 2) {
-          head.x = 0;
-        }
+        if (head.x >= gridSize * boxSize * 2) { head.x = 0; }
         break;
       case 'up':
         head.y += boxSize;
-        if (head.y >= gridSize * boxSize * 2) {
-          head.y = 0;
-        }
+        if (head.y >= gridSize * boxSize * 2) { head.y = 0; }
         break;
     }
-
     snakeObj.snake.unshift(head);
 
+    // EATING YOURSELF:
+    const snakeBodyWithoutHead = snakeObj.snake.slice(1);
+    const snakeBodyId = snakeObj.id
+    for (const bodyPosition of snakeBodyWithoutHead) {
+      if (head.x === bodyPosition.x && head.y === bodyPosition.y) {
+        // Replace with a new snake
+        snakes.splice(snakes.indexOf(snakeObj), 1, createNewSnake(head, snakeBodyId)); 
+      }
+    }
+    
+ 
+    // APPLE PART :
     let { direction, ...headWithoutDir } = head;
     if (headWithoutDir.x === apple.x && headWithoutDir.y === apple.y) {
       apple = createNewApple();
@@ -149,6 +169,17 @@ function moveSnakes() {
     }
     
   }
+}
+
+function createNewSnake(head, id) {
+  return {
+    id: id,
+    snake: [{
+      x: head.x,
+      y: head.y,
+      direction: head.direction
+    }]
+  };
 }
 
 function broadcastSnakePositions() {

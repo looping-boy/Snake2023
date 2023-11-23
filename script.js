@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const boxSize = 10;
 
-    // const socket = new WebSocket('wss://52.47.142.196:3000');
+    //const socket = new WebSocket('ws://13.38.251.95:3000');
     const socket = new WebSocket('ws://localhost:3000');
     socket.onmessage = function(e){ };
     //socket.onopen = () => socket.send({});
@@ -43,8 +43,8 @@ document.addEventListener("DOMContentLoaded", function () {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         data.forEach((snakeObj, player) => {
              // Get the x and y values for each clientId
-             const xValue = snakeObj.snake[0].x;
-             const yValue = snakeObj.snake[0].y;
+             //const xValue = snakeObj.snake[0].x;
+             //const yValue = snakeObj.snake[0].y;
 
              // Log or use the x and y values
              //console.log(`iD: ${clientId}, X: ${xValue}, Y: ${yValue}`);
