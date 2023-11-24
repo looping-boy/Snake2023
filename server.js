@@ -85,49 +85,79 @@ function handleKeyDown(clientId, keyCode) {
   if (snakeObj) {
     const head = Object.assign({}, snakeObj.snake[0]);
     let directionChoose;
+    let headDirection = snakeObj.snake[0].direction;
+    
     switch (keyCode) {
       case 37:
         directionChoose = 'left'
-        if (snakeObj.snake[0].direction == 'right') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
-        else {snakeObj.snake[0].direction = directionChoose;}
+        if (headDirection == 'right') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+        else { snakeObj.snake[0].direction = directionChoose; }
         break;
       case 38:
         directionChoose = 'down'
-        if (snakeObj.snake[0].direction == 'up') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
-        else {snakeObj.snake[0].direction = directionChoose;}
+        if (headDirection == 'up') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+        else { snakeObj.snake[0].direction = directionChoose; }
         break;
       case 39:
         directionChoose = 'right'
-        if (snakeObj.snake[0].direction == 'left') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
-        else {snakeObj.snake[0].direction = directionChoose;}
+        if (headDirection == 'left') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+        else { snakeObj.snake[0].direction = directionChoose; }
         break;
       case 40:
         directionChoose = 'up'
-        if (snakeObj.snake[0].direction == 'down') { snakeObj.snake.reverse(); snakeObj.snake[0].direction = snakeReverse(snakeObj.snake) }
-        else {snakeObj.snake[0].direction = directionChoose;}
+        if (headDirection == 'down') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+        else { snakeObj.snake[0].direction = directionChoose; }
         break;
     }
   }
 }
 
-function snakeReverse(snake) {
+function reverseAndDealWithDirection(snake, directionChoose) {
+  snake.reverse(); 
+  snake[0].direction = dealWithDirection(snake, directionChoose) ;
+  return snake;
+}
+
+function dealWithDirection(snake, directionChoose) {
   const length = snake.length;
   if (length >= 2) {
+    
     const [head, neck] = [snake[0], snake[1]];
     if (head.x === neck.x) {
+      // If snake is going from one side of other of the wall:
+      if (Math.abs(head.y - neck.y) > boxSize) {
+        return head.y > neck.y ? 'down' : 'up';
+      }
       return head.y > neck.y ? 'up' : 'down';
     } else if (head.y === neck.y) {
+      // If snake is going from one side of other of the wall:
+      if (Math.abs(head.x - neck.x) > boxSize) {
+        return head.x > neck.x ? 'left' : 'right';
+      }
       return head.x > neck.x ? 'right' : 'left';
     } 
-  } 
+  } else {
+    return directionChoose;
+  }
 }
 
 function moveSnakes() {
   
   for (const snakeObj of snakes) {
 
-    // MOVING/REAPEARING:
     const head = Object.assign({}, snakeObj.snake[0]);
+
+    // EATING YOURSELF:
+    const snakeBodyWithoutHead = snakeObj.snake.slice(1);
+    const snakeBodyId = snakeObj.id
+    for (const bodyPosition of snakeBodyWithoutHead) {
+      if (head.x === bodyPosition.x && head.y === bodyPosition.y) {
+        // Replace with a new snake
+        snakes.splice(snakes.indexOf(snakeObj), 1, createNewSnake(head, snakeBodyId)); 
+      }
+    }
+
+    // MOVING/REAPEARING:
     switch (head.direction) {
       case 'left':
         head.x -= boxSize;
@@ -147,17 +177,6 @@ function moveSnakes() {
         break;
     }
     snakeObj.snake.unshift(head);
-
-    // EATING YOURSELF:
-    const snakeBodyWithoutHead = snakeObj.snake.slice(1);
-    const snakeBodyId = snakeObj.id
-    for (const bodyPosition of snakeBodyWithoutHead) {
-      if (head.x === bodyPosition.x && head.y === bodyPosition.y) {
-        // Replace with a new snake
-        snakes.splice(snakes.indexOf(snakeObj), 1, createNewSnake(head, snakeBodyId)); 
-      }
-    }
-    
  
     // APPLE PART :
     let { direction, ...headWithoutDir } = head;
