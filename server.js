@@ -23,6 +23,7 @@ const yMin = 0;
 const clients = new Set();
 
 let snakes = [];
+const commands = new Set();
 
 function getRandomCoordinate(min, max, boxSize) {
   return Math.floor(Math.random() * ((max - boxSize) - min + 1) / boxSize) * boxSize;
@@ -46,6 +47,7 @@ wss.on('connection', (ws) => {
   // Initialize the snake for the connected client
   snakes.push({
     id: id,
+    newDirection: "",
     snake: [{
       x: gridSize * boxSize,
       y: gridSize * boxSize,
@@ -63,7 +65,7 @@ wss.on('connection', (ws) => {
     //console.log(type, data)
     // OPTIMIZE CODE HERE:
     if (type === 'keydown') {
-      handleKeyDown(id, data.keyCode);
+      handleUserAction(id, data.keyCode);
     }
   });
 
@@ -80,34 +82,57 @@ function generateUniqueId() {
   return Date.now().toString(36).slice(5, 7) + Math.random().toString(36).slice(3, 5);
 }
 
-function handleKeyDown(clientId, keyCode) {
-  const snakeObj = snakes.find(snake => snake.id === clientId);
-  if (snakeObj) {
-    const head = Object.assign({}, snakeObj.snake[0]);
-    let directionChoose;
-    let headDirection = snakeObj.snake[0].direction;
+function handleKeyDown() {
+  for (const snakeObj of snakes) {
     
+      let directionChoose = snakeObj.newDirection;
+
+      let headDirection = snakeObj.snake[0].direction;
+      switch (directionChoose) {
+        case 'left':
+          if (headDirection == 'right') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+          else { snakeObj.snake[0].direction = directionChoose; }
+          break;
+        case 'down':
+          if (headDirection == 'up') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+          else { snakeObj.snake[0].direction = directionChoose; }
+          break;
+        case 'right':
+          if (headDirection == 'left') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+          else { snakeObj.snake[0].direction = directionChoose; }
+          break;
+        case 'up': 
+          if (headDirection == 'down') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
+          else { snakeObj.snake[0].direction = directionChoose; }
+          break;
+      }
+      snakeObj.newDirection = "";
+    
+  }
+}
+
+function handleUserAction(clientId, keyCode) {
     switch (keyCode) {
       case 37:
-        directionChoose = 'left'
-        if (headDirection == 'right') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
-        else { snakeObj.snake[0].direction = directionChoose; }
+        updateNewDirection(clientId, 'left')
         break;
       case 38:
-        directionChoose = 'down'
-        if (headDirection == 'up') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
-        else { snakeObj.snake[0].direction = directionChoose; }
+        updateNewDirection(clientId, 'down')
         break;
       case 39:
-        directionChoose = 'right'
-        if (headDirection == 'left') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
-        else { snakeObj.snake[0].direction = directionChoose; }
+        updateNewDirection(clientId, 'right')
         break;
       case 40:
-        directionChoose = 'up'
-        if (headDirection == 'down') { snakeObj.snake = reverseAndDealWithDirection(snakeObj.snake, directionChoose) }
-        else { snakeObj.snake[0].direction = directionChoose; }
+        updateNewDirection(clientId, 'up')
         break;
+    }
+}
+
+function updateNewDirection(clientId, newDirection) {
+  for (const snakeObj of snakes) {
+    if (snakeObj.id === clientId) {
+      snakeObj.newDirection = newDirection;
+      return;
     }
   }
 }
@@ -224,6 +249,7 @@ function broadcastApplePosition() {
 }
 
 setInterval(() => {
+  handleKeyDown();
   moveSnakes();
   broadcastSnakePositions();
 }, gameClock);
