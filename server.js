@@ -29,12 +29,6 @@ function getRandomCoordinate(min, max, boxSize) {
   return Math.floor(Math.random() * ((max - boxSize) - min + 1) / boxSize) * boxSize;
 }
 
-function createNewApple() {
-  const apple_x = getRandomCoordinate(xMin, xMax, boxSize);
-  const apple_y = getRandomCoordinate(yMin, yMax, boxSize);
-  return { x: apple_x, y: apple_y };
-}
-
 let apple = createNewApple();
 
 wss.on('connection', (ws) => {
@@ -45,6 +39,7 @@ wss.on('connection', (ws) => {
   const id = generateUniqueId();
 
   // Initialize the snake for the connected client
+  //TODO:WHERE THERE'S NOBODY
   snakes.push({
     id: id,
     newDirection: "",
@@ -218,12 +213,19 @@ function moveSnakes() {
 function createNewSnake(head, id) {
   return {
     id: id,
+    newDirection: "",
     snake: [{
       x: head.x,
       y: head.y,
       direction: head.direction
     }]
   };
+}
+
+function createNewApple() {
+  const apple_x = getRandomCoordinate(xMin, xMax, boxSize);
+  const apple_y = getRandomCoordinate(yMin, yMax, boxSize);
+  return { x: apple_x, y: apple_y };
 }
 
 function broadcastSnakePositions() {
@@ -248,12 +250,42 @@ function broadcastApplePosition() {
   });
 }
 
+function checkSnakeCollisions() {
+  for (let i = 0; i < snakes.length; i++) {
+    const snakeObj = snakes[i];
+    const head = Object.assign({}, snakeObj.snake[0]);
+    const snakeBodyId = snakeObj.id
+    for (let j = 0; j < snakes.length; j++) {
+      if (i === j) { continue; }
+      const snakeEnemy = snakes[j];
+      if (areSnakesColliding(snakeObj.snake, snakeEnemy.snake)) {
+        // Handle collision (e.g., end the game, remove colliding snakes, etc.)
+        //console.log(`Collision between ${snakeObj.id} and ${snakeEnemy.id}`);
+        snakes.splice(snakes.indexOf(snakeObj), 1, createNewSnake(head, snakeBodyId)); 
+      }
+    }
+  }
+}
+
+function areSnakesColliding(snake, snakeEnemy) {
+  // Check if any segment of snakeA collides with snakeB
+  
+    for (const segmentB of snakeEnemy) {
+      if (snake[0].x === segmentB.x && snake[0].y === segmentB.y) {
+        return true;
+      }
+    }
+  
+  return false;
+}
+
 setInterval(() => {
   handleKeyDown();
   moveSnakes();
   broadcastSnakePositions();
+  checkSnakeCollisions();
 }, gameClock);
 
 server.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on ${port}`);
 });
