@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
     
     let apple = null;
 
+    let myId = null;
+
     const canvas = document.getElementById("snakeCanvas");
     const ctx = canvas.getContext("2d");
 
@@ -28,7 +30,20 @@ document.addEventListener("DOMContentLoaded", function () {
         if (type === 'snake') {
             drawSnake(data, apple);
         }
-        
+        if (type === 'id') {
+            console.log(data);
+            myId = data;
+        }
+        if (type === 'deathSound') {
+            console.log("HURT");
+            var audio = new Audio("./assets/sounds/aouch.mp3");
+            audio.play();
+        }
+        if (type === 'appleSound') {
+            console.log("Apple");
+            var audio = new Audio("./assets/sounds/crunch.mp3");
+            audio.play();
+        }
     });
 
     document.addEventListener("keydown", function (event) {

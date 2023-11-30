@@ -20,10 +20,9 @@ const xMin = 0;
 const yMax = gridSize * boxSize * 2;
 const yMin = 0;
 
-const clients = new Set();
+const clientsMap = new Map();
 
 let snakes = [];
-const commands = new Set();
 
 function getRandomCoordinate(min, max, boxSize) {
   return Math.floor(Math.random() * ((max - boxSize) - min + 1) / boxSize) * boxSize;
@@ -32,11 +31,13 @@ function getRandomCoordinate(min, max, boxSize) {
 let apple = createNewApple();
 
 wss.on('connection', (ws) => {
-  // ADD CLIENT 
-  clients.add(ws);
 
   // Generate a unique ID for the connected client
   const id = generateUniqueId();
+  // ADD CLIENT 
+  clientsMap.set(ws, id);
+
+  sendCorrespondingIdToClients();
 
   // Initialize the snake for the connected client
   //TODO:WHERE THERE'S NOBODY
@@ -65,7 +66,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    clients.delete(ws);
+    clientsMap.delete(ws);
     const index = snakes.findIndex(snake => snake.id === id);
     if (index !== -1) {
       snakes.splice(index, 1);
@@ -203,6 +204,7 @@ function moveSnakes() {
     if (headWithoutDir.x === apple.x && headWithoutDir.y === apple.y) {
       apple = createNewApple();
       broadcastApplePosition();
+      sendAppleSound(snakeObj.id);
     } else {
       snakeObj.snake.pop();
     }
@@ -229,7 +231,7 @@ function createNewApple() {
 }
 
 function broadcastSnakePositions() {
-  clients.forEach((client) => {
+  clientsMap.forEach((id, client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({ 
         type: 'snake', 
@@ -240,7 +242,7 @@ function broadcastSnakePositions() {
 }
 
 function broadcastApplePosition() {
-  clients.forEach((client) => {
+  clientsMap.forEach((id, client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({ 
         type: 'apple', 
@@ -261,6 +263,7 @@ function checkSnakeCollisions() {
       if (areSnakesColliding(snakeObj.snake, snakeEnemy.snake)) {
         // Handle collision (e.g., end the game, remove colliding snakes, etc.)
         //console.log(`Collision between ${snakeObj.id} and ${snakeEnemy.id}`);
+        sendDeathSound(snakeBodyId);
         snakes.splice(snakes.indexOf(snakeObj), 1, createNewSnake(head, snakeBodyId)); 
       }
     }
@@ -279,7 +282,43 @@ function areSnakesColliding(snake, snakeEnemy) {
   return false;
 }
 
+function sendDeathSound(snakeBodyId) {
+  clientsMap.forEach((id, client) => {
+    if (id == snakeBodyId) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'deathSound'}));
+      }
+    }
+  });
+}
+
+function sendAppleSound(snakeBodyId) {
+  clientsMap.forEach((id, client) => {
+    if (id == snakeBodyId) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'appleSound'}));
+      }
+    }
+  });
+}
+
+function sendCorrespondingIdToClients() {
+  clientsMap.forEach((clientId, client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ type: 'id', data: clientId }));
+    } else {
+      console.error(`WebSocket connection for client ${clientId} is not open.`);
+    }
+  });
+  return true; 
+}
+
+let idHasBeenSentToEveryone = false;
+
 setInterval(() => {
+  if (!idHasBeenSentToEveryone) {
+    idHasBeenSentToEveryone = sendCorrespondingIdToClients();
+  }
   handleKeyDown();
   moveSnakes();
   broadcastSnakePositions();
